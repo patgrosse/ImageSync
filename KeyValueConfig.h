@@ -7,10 +7,12 @@
 #include <iostream>
 #include <sstream>
 
+using namespace std;
+
 namespace fs = boost::filesystem;
 
 template<typename T>
-std::function<T(T)> identity() {
+function<T(T)> identity() {
     return [](T v) -> T { return v; };
 }
 
@@ -18,10 +20,10 @@ namespace KeyValueConfig {
     static const char SPLIT_CHAR = '=';
 
     template<class KeyType, class ValueType>
-    void write_to_file(const std::vector<std::pair<KeyType, ValueType> > &data,
+    void write_to_file(const vector<pair<KeyType, ValueType> > &data,
                        const fs::path &path,
-                       std::function<std::string(ValueType)> stringifyValue = identity<ValueType>(),
-                       std::function<std::string(KeyType)> stringifyKey = identity<KeyType>()) {
+                       function<string(ValueType)> stringifyValue = identity<ValueType>(),
+                       function<string(KeyType)> stringifyKey = identity<KeyType>()) {
         fs::ofstream config_file(path);
         for (size_t i = 0; i < data.size(); i++) {
             config_file << stringifyKey(data[i].first) << SPLIT_CHAR << stringifyValue(data[i].second) << "\n";
@@ -30,23 +32,23 @@ namespace KeyValueConfig {
     }
 
     template<class KeyType, class ValueType>
-    void read_from_file(std::vector<std::pair<KeyType, ValueType> > &data,
+    void read_from_file(vector<pair<KeyType, ValueType> > &data,
                         const fs::path &path,
-                        std::function<ValueType(std::string)> destringifyValue = identity<ValueType>(),
-                        std::function<KeyType(std::string)> destringifyKey = identity<KeyType>()) {
+                        function<ValueType(string)> destringifyValue = identity<ValueType>(),
+                        function<KeyType(string)> destringifyKey = identity<KeyType>()) {
         fs::ifstream config_file(path);
         data.clear();
-        std::string line;
+        string line;
         while (getline(config_file, line)) {
-            std::istringstream iss(line);
-            std::string token;
+            istringstream iss(line);
+            string token;
             KeyType key;
             ValueType value;
-            if (!std::getline(iss, token, SPLIT_CHAR)) {
+            if (!getline(iss, token, SPLIT_CHAR)) {
                 return;
             }
             key = destringifyKey(token);
-            if (!std::getline(iss, token, SPLIT_CHAR)) {
+            if (!getline(iss, token, SPLIT_CHAR)) {
                 return;
             }
             value = destringifyValue(token);

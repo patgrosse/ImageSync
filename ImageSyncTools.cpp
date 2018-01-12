@@ -4,19 +4,20 @@
 #include <chrono>
 #include <iostream>
 
+using namespace std;
 using namespace Magick;
 
 namespace fs = boost::filesystem;
-namespace clk = std::chrono;
+namespace clk = chrono;
 
 template<typename Loggable>
-void log_msg_for_file(const std::string &file, const Loggable &msg) {
-    std::cout << "[" << file << "] " << msg << "\n";
+void log_msg_for_file(const string &file, const Loggable &msg) {
+    cout << "[" << file << "] " << msg << "\n";
 }
 
 
 void process_images_batch(const fs::path &input, const fs::path &output,
-                          std::deque<fs::path> &data, ImageSyncContext &context) {
+                          deque<fs::path> &data, ImageSyncContext &context) {
     ImageSyncContext temp_context(context.getSize());
 #pragma omp parallel
     {
@@ -35,14 +36,14 @@ void process_images_batch(const fs::path &input, const fs::path &output,
             if (empty) {
                 break;
             }
-            const std::string path_absolute_str = path_absolute.string();
+            const string path_absolute_str = path_absolute.string();
             const fs::path path_relative = relative(path_absolute, input);
             const fs::path path_to = absolute(path_relative, output);
-            const std::string &path_to_str = path_to.string();
+            const string &path_to_str = path_to.string();
             log_msg_for_file(path_absolute_str, boost::format("Started processing to %1%") % path_to_str);
             if (exists(path_absolute)) {
-                std::time_t cached_timestamp = context.get(path_absolute_str);
-                std::time_t read_timestamp = fs::last_write_time(path_absolute);
+                time_t cached_timestamp = context.get(path_absolute_str);
+                time_t read_timestamp = fs::last_write_time(path_absolute);
                 if (cached_timestamp != -1) {
                     bool not_modified = false;
                     if (read_timestamp == cached_timestamp) {
@@ -66,7 +67,7 @@ void process_images_batch(const fs::path &input, const fs::path &output,
                 create_directories(path_to.parent_path());
                 process_image(path_absolute_str, path_to_str);
                 const auto time_finish = clk::system_clock::now();
-                const clk::duration<double, std::milli> time_span = time_finish - time_start;
+                const clk::duration<double, milli> time_span = time_finish - time_start;
                 log_msg_for_file(path_absolute_str,
                                  boost::format("Successfully processed file in %1% ms") % time_span.count());
             } else {
@@ -78,8 +79,8 @@ void process_images_batch(const fs::path &input, const fs::path &output,
     context = temp_context;
 }
 
-void scan_directory_to_queue(const fs::path &path, std::deque<fs::path> &queue) {
-    std::cout << "Start file discovery in folder " << path.string() << "\n";
+void scan_directory_to_queue(const fs::path &path, deque<fs::path> &queue) {
+    cout << "Start file discovery in folder " << path.string() << "\n";
     {
         fs::recursive_directory_iterator end, dir(path);
         while (dir != end) {
@@ -89,11 +90,11 @@ void scan_directory_to_queue(const fs::path &path, std::deque<fs::path> &queue) 
             ++dir;
         }
     }
-    std::cout << "Finished file discovery in folder " << path.string() << "\n";
-    std::cout << "Found " << queue.size() << " image file(s)\n";
+    cout << "Finished file discovery in folder " << path.string() << "\n";
+    cout << "Found " << queue.size() << " image file(s)\n";
 }
 
-void process_image(const std::string &from, const std::string &to) {
+void process_image(const string &from, const string &to) {
     Image image;
     image.read(from);
     image.resize(Geometry(1920, 1080));
@@ -110,27 +111,27 @@ size_t ImageSyncContext::getSize() {
     return modify_timestamps.size();
 }
 
-void ImageSyncContext::emplace_back(const std::string &key, const std::time_t &value) {
+void ImageSyncContext::emplace_back(const string &key, const time_t &value) {
     modify_timestamps.emplace_back(key, value);
 }
 
 struct TimestampMapComp {
-    bool operator()(const std::pair<std::string, std::time_t> &p, const std::string &s) const {
+    bool operator()(const pair<string, time_t> &p, const string &s) const {
         return p.first < s;
     }
 
-    bool operator()(const std::string &s, const std::pair<std::string, std::time_t> &p) const {
+    bool operator()(const string &s, const pair<string, time_t> &p) const {
         return s < p.first;
     }
 };
 
 template<class ForwardIt, class T, class Compare>
 ForwardIt binary_find(ForwardIt first, ForwardIt last, const T &value, Compare comp) {
-    first = std::lower_bound(first, last, value, comp);
+    first = lower_bound(first, last, value, comp);
     return first != last && !comp(value, *first) ? first : last;
 }
 
-std::time_t ImageSyncContext::get(const std::string &key) {
+time_t ImageSyncContext::get(const string &key) {
     auto it = binary_find(modify_timestamps.begin(), modify_timestamps.end(), key, TimestampMapComp());
     if (it != modify_timestamps.cend()) {
         return it.base()->second;
@@ -140,12 +141,12 @@ std::time_t ImageSyncContext::get(const std::string &key) {
 }
 
 void ImageSyncContext::perform_sort() {
-    std::sort(modify_timestamps.begin(), modify_timestamps.end(),
-              [](std::pair<std::string, std::time_t> left, std::pair<std::string, std::time_t> right) {
+    sort(modify_timestamps.begin(), modify_timestamps.end(),
+              [](pair<string, time_t> left, pair<string, time_t> right) {
                   return left.first < right.first;
               });
 }
 
-std::vector<std::pair<std::string, std::time_t> > &ImageSyncContext::get_data() {
+vector<pair<string, time_t> > &ImageSyncContext::get_data() {
     return modify_timestamps;
 }

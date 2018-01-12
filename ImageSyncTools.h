@@ -4,6 +4,8 @@
 #include <boost/filesystem.hpp>
 #include <Magick++.h>
 
+using namespace std;
+
 namespace fs = boost::filesystem;
 
 class ImageSyncContext {
@@ -14,23 +16,23 @@ public:
 
     size_t getSize();
 
-    void emplace_back(const std::string &key, const std::time_t &value);
+    void emplace_back(const string &key, const time_t &value);
 
-    std::time_t get(const std::string &key);
+    time_t get(const string &key);
 
     void perform_sort();
 
-    std::vector<std::pair<std::string, std::time_t> > &get_data();
+    vector<pair<string, time_t> > &get_data();
 
 private:
-    std::vector<std::pair<std::string, std::time_t> > modify_timestamps;
+    vector<pair<string, time_t> > modify_timestamps;
 };
 
-void scan_directory_to_queue(const fs::path &path, std::deque<fs::path> &queue);
+void scan_directory_to_queue(const fs::path &path, deque<fs::path> &queue);
 
-void process_image(const std::string &from, const std::string &to);
+void process_image(const string &from, const string &to);
 
 void process_images_batch(const fs::path &input, const fs::path &output,
-                          std::deque<fs::path> &data, ImageSyncContext &context);
+                          deque<fs::path> &data, ImageSyncContext &context);
 
 #endif //IMAGESYNC_IMAGESYNCTOOLS_H
