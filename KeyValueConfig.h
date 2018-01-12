@@ -9,22 +9,19 @@
 
 namespace fs = boost::filesystem;
 
-struct identity {
-    template<typename U>
-    constexpr auto operator()(U &&v) const noexcept
-    -> decltype(std::forward<U>(v)) {
-        return std::forward<U>(v);
-    }
-};
+template<typename T>
+std::function<T(T)> identity() {
+    return [](T v) -> T { return v; };
+}
 
 namespace KeyValueConfig {
     static const char SPLIT_CHAR = '=';
 
-    template<class KeyType, class ValueType, typename StringifyKey = identity, typename StringifyValue = identity>
+    template<class KeyType, class ValueType>
     void write_to_file(const std::vector<std::pair<KeyType, ValueType> > &data,
                        const fs::path &path,
-                       StringifyKey stringifyKey = StringifyKey(),
-                       StringifyValue stringifyValue = StringifyValue()) {
+                       std::function<std::string(ValueType)> stringifyValue = identity<ValueType>(),
+                       std::function<std::string(KeyType)> stringifyKey = identity<KeyType>()) {
         fs::ofstream config_file(path);
         for (size_t i = 0; i < data.size(); i++) {
             config_file << stringifyKey(data[i].first) << SPLIT_CHAR << stringifyValue(data[i].second) << "\n";
@@ -32,11 +29,11 @@ namespace KeyValueConfig {
         config_file.close();
     }
 
-    template<class KeyType, class ValueType, typename DestringifyKey = identity, typename DestringifyValue = identity>
+    template<class KeyType, class ValueType>
     void read_from_file(std::vector<std::pair<KeyType, ValueType> > &data,
                         const fs::path &path,
-                        DestringifyKey destringifyKey = DestringifyKey(),
-                        DestringifyValue destringifyValue = DestringifyValue()) {
+                        std::function<ValueType(std::string)> destringifyValue = identity<ValueType>(),
+                        std::function<KeyType(std::string)> destringifyKey = identity<KeyType>()) {
         fs::ifstream config_file(path);
         data.clear();
         std::string line;

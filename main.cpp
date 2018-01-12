@@ -49,9 +49,10 @@ void perform_conversion(const fs::path &config_file, const fs::path &input,
     cout << "Reading config\n";
     ImageSyncContext context{};
     if (fs::exists(config_file)) {
-        KeyValueConfig::read_from_file(context.get_data(), config_file, identity(), [](string input) {
+        std::function<long(std::string)> krams = [](std::string input) -> long {
             return atol(input.c_str());
-        });
+        };
+        KeyValueConfig::read_from_file(context.get_data(), config_file, krams);
     }
     context.perform_sort();
     deque<fs::path> data;
@@ -59,7 +60,10 @@ void perform_conversion(const fs::path &config_file, const fs::path &input,
     process_images_batch(input, output, data, context);
     cout << "Finished converting images\n";
     cout << "Saving config\n";
-    KeyValueConfig::write_to_file(context.get_data(), config_file);
+    std::function<std::string(long)> krams2 = [](long input) -> std::string {
+        return std::to_string(input);
+    };
+    KeyValueConfig::write_to_file(context.get_data(), config_file, krams2);
     cout << "Successfully finished\n";
 }
 
