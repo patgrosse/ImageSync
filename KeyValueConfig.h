@@ -18,6 +18,8 @@ struct identity {
 };
 
 namespace KeyValueConfig {
+    static const char SPLIT_CHAR = '=';
+
     template<class KeyType, class ValueType, typename StringifyKey = identity, typename StringifyValue = identity>
     void write_to_file(const std::vector<std::pair<KeyType, ValueType> > &data,
                        const fs::path &path,
@@ -25,7 +27,7 @@ namespace KeyValueConfig {
                        StringifyValue stringifyValue = StringifyValue()) {
         fs::ofstream config_file(path);
         for (size_t i = 0; i < data.size(); i++) {
-            config_file << stringifyKey(data[i].first) << ":" << stringifyValue(data[i].second) << "\n";
+            config_file << stringifyKey(data[i].first) << SPLIT_CHAR << stringifyValue(data[i].second) << "\n";
         }
         config_file.close();
     }
@@ -43,11 +45,11 @@ namespace KeyValueConfig {
             std::string token;
             KeyType key;
             ValueType value;
-            if (!std::getline(iss, token, ':')) {
+            if (!std::getline(iss, token, SPLIT_CHAR)) {
                 return;
             }
             key = destringifyKey(token);
-            if (!std::getline(iss, token, ':')) {
+            if (!std::getline(iss, token, SPLIT_CHAR)) {
                 return;
             }
             value = destringifyValue(token);

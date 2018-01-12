@@ -1,5 +1,6 @@
 #include "ImageSyncTools.h"
 #include <boost/algorithm/string.hpp>
+#include <boost/format.hpp>
 #include <chrono>
 #include <iostream>
 
@@ -7,6 +8,12 @@ using namespace Magick;
 
 namespace fs = boost::filesystem;
 namespace clk = std::chrono;
+
+template<typename Loggable>
+void log_msg_for_file(const std::string &file, const Loggable &msg) {
+    std::cout << "[" << file << "] " << msg << "\n";
+}
+
 
 void process_images_batch(const fs::path &input, const fs::path &output,
                           std::deque<fs::path> &data, ImageSyncContext &context) {
@@ -32,19 +39,27 @@ void process_images_batch(const fs::path &input, const fs::path &output,
             const fs::path path_relative = relative(path_absolute, input);
             const fs::path path_to = absolute(path_relative, output);
             const std::string &path_to_str = path_to.string();
-            std::cout << "Processing file " << path_absolute_str << "\n"
-                      << "    output to " << path_to_str << "\n";
+            log_msg_for_file(path_absolute_str, boost::format("Started processing to %1%") % path_to_str);
             if (exists(path_absolute)) {
                 std::time_t cached_timestamp = context.get(path_absolute_str);
                 std::time_t read_timestamp = fs::last_write_time(path_absolute);
                 if (cached_timestamp != -1) {
+                    bool not_modified = false;
                     if (read_timestamp == cached_timestamp) {
-                        std::cout << "File " << path_absolute_str << " was not modified since last run\n";
-                        continue;
+                        log_msg_for_file(path_absolute_str, "File was not modified since last run");
+                        not_modified = true;
                     } else if (read_timestamp < cached_timestamp) {
-                        std::cout << "Modify timestamp of file " << path_absolute_str
-                                  << " is older than the one read during the last run!\n";
-                        continue;
+                        log_msg_for_file(path_absolute_str,
+                                         "Modify timestamp is older than the one read during the last run!");
+                        not_modified = true;
+                    }
+                    if (not_modified) {
+                        if (fs::exists(path_to)) {
+                            temp_context.emplace_back(path_absolute_str, cached_timestamp);
+                            continue;
+                        } else {
+                            log_msg_for_file(path_absolute_str, "File was not modified but is missing in destination");
+                        }
                     }
                 }
                 temp_context.emplace_back(path_absolute_str, read_timestamp);
@@ -52,10 +67,10 @@ void process_images_batch(const fs::path &input, const fs::path &output,
                 process_image(path_absolute_str, path_to_str);
                 const auto time_finish = clk::system_clock::now();
                 const clk::duration<double, std::milli> time_span = time_finish - time_start;
-                std::cout << "Successfully process file " << path_absolute_str << "\n" <<
-                          "    in " << time_span.count() << " ms\n";
+                log_msg_for_file(path_absolute_str,
+                                 boost::format("Successfully processed file in %1% ms") % time_span.count());
             } else {
-                std::cout << "Could not read missing file " << path_absolute_str << "\n";
+                log_msg_for_file(path_absolute_str, boost::format("Could not read missing file"));
             }
         }
     }

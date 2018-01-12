@@ -1,4 +1,5 @@
 #include <boost/filesystem.hpp>
+#include <boost/program_options.hpp>
 #include <boost/algorithm/string.hpp>
 #include <Magick++.h>
 #include <iostream>
@@ -9,33 +10,56 @@
 using namespace std;
 using namespace Magick;
 namespace fs = boost::filesystem;
+namespace po = boost::program_options;
 
-int main(int argc, char **argv) {
-    ImageSyncContext context{};
-    context.emplace_back("a", 1);
-    context.emplace_back("b", 2);
-    context.emplace_back("c", 3);
-    context.emplace_back("d", 4);
-    context.emplace_back("f", 5);
-    context.emplace_back("g", 6);
-    context.emplace_back("h", 7);
-    context.emplace_back("h", 8);
-    fs::path config_file{"ImageSync.cfg"};
-    KeyValueConfig::write_to_file(context.get_data(), config_file);
-    ImageSyncContext context2{};
-    KeyValueConfig::read_from_file(context2.get_data(), config_file, identity(), [](std::string input) {
-        return atol(input.c_str());
-    });
-    context2.perform_sort();
-    /*InitializeMagick(*argv);
+void perform_conversion(const fs::path &config_file, const fs::path &input,
+                        const fs::path &output);
+
+int main(const int argc, const char **argv) {
     std::cout << "ImageSync v0.1\n==============\n";
-    fs::path input("/home/patrick/Nextcloud/Shares");
-    fs::path output("/home/patrick/Nextcloud2/Shares");
+    po::options_description desc{"Options"};
+    desc.add_options()("help,h", "Help screen")
+            ("from,f", po::value<std::string>()->required(), "Read from this folder")
+            ("to,t", po::value<std::string>()->required(), "Output to this folder")
+            ("config,c", po::value<std::string>()->default_value("ImageSync.cfg"), "Config file location");
+
+    po::variables_map vm;
+    po::store(parse_command_line(argc, argv, desc), vm);
+    if (vm.count("help")) {
+        std::cout << desc << '\n';
+        return 0;
+    }
+    try {
+        po::notify(vm);
+    } catch (const po::error &ex) {
+        std::cerr << ex.what() << '\n';
+        std::cout << desc << '\n';
+        return -1;
+    }
+    fs::path input(vm["from"].as<std::string>());
+    fs::path output(vm["to"].as<std::string>());
+    fs::path config_file(vm["config"].as<std::string>());
+    InitializeMagick(*argv);
+    perform_conversion(config_file, input, output);
+    return 0;
+}
+
+void perform_conversion(const fs::path &config_file, const fs::path &input,
+                        const fs::path &output) {
+    cout << "Reading config\n";
+    ImageSyncContext context{};
+    if (fs::exists(config_file)) {
+        KeyValueConfig::read_from_file(context.get_data(), config_file, identity(), [](string input) {
+            return atol(input.c_str());
+        });
+    }
+    context.perform_sort();
     deque<fs::path> data;
     scan_directory_to_queue(input, data);
-    ImageSyncContext context;
     process_images_batch(input, output, data, context);
-    std::cout << "Finished converting images\n";*/
-    return 0;
+    cout << "Finished converting images\n";
+    cout << "Saving config\n";
+    KeyValueConfig::write_to_file(context.get_data(), config_file);
+    cout << "Successfully finished\n";
 }
 
